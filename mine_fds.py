@@ -21,19 +21,27 @@ import argparse
 from fca.algorithms import lst2str
 from fca.algorithms.canonical_base import PSCanonicalBase
 from fca.defs.patterns.hypergraphs import TrimmedPartitionPattern
-from fca.reader import List2PartitionsTransformer
-from fca.reader import PatternStructureManager
+from fca.io.transformers import List2PartitionsTransformer
+from fca.io.sorters import PartitionSorter
+from fca.io.input_models import PatternStructureModel
+import json
 
-def exec_ex21(filepath, output_fname=None):
+def mine_fds(filepath, output_fname=None, rule_fname=None):
     """
-    Example 21: Duquenne Guigues Base using TrimmedPartitions with PreviousClosure OnDisk - Streaming patterns to disk
+    Based on Example 21: Duquenne Guigues Base using TrimmedPartitions with PreviousClosure OnDisk - Streaming patterns to disk
     """
+    if rule_fname is None:
+        rule_fname = filepath[:filepath.rfind('.')] + '.rules.json'
+    
+    
+
     transposed = True
     TrimmedPartitionPattern.reset()
 
-    fctx = PatternStructureManager(
+    fctx = PatternStructureModel(
         filepath=filepath,
         transformer=List2PartitionsTransformer(transposed),
+        sorter=PartitionSorter(),
         transposed=transposed,
         file_manager_params={
             'style': 'tab'
@@ -54,12 +62,23 @@ def exec_ex21(filepath, output_fname=None):
             }
     )
     output_path = canonical_base.poset.close()
-
-    for rule, support in canonical_base.get_implications():
-        ant, con = rule
-        print('{:10s} => {:10s}'.format(lst2str(ant), lst2str(con)), support)
-
     print ("\t=> Pseudo closures stored in {}".format(output_path))
+
+    fctx.transformer.attribute_index = {i:j for i, j in enumerate(fctx.sorter.processing_order)}
+    # print(fctx.transformer.attribute_index)
+
+    rules = []
+
+    for i, (rule, support) in enumerate(canonical_base.get_implications()):
+        rules.append(rule)
+        # ant, con = rule
+        # print('{}: {:10s} => {:10s}'.format(i+1, lst2str(ant), lst2str(con)), support)
+    print ('{} Rules found'.format(len(rules)))
+    # 
+    with open(rule_fname, 'w') as fout:
+        json.dump(rules, fout)
+        print ("\t=> Implications stored in {}".format(rule_fname))
+    
 
 if __name__ == '__main__':
     __parser__ = argparse.ArgumentParser(
@@ -79,6 +98,14 @@ if __name__ == '__main__':
         help='Output file to save formal concepts',
         default=None
     )
+    __parser__.add_argument(
+        '-r',
+        '--output_fname_rules',
+        metavar='output_fname_rules',
+        type=str,
+        help='Output file to save implications',
+        default=None
+    )
 
     __args__ = __parser__.parse_args()
-    exec_ex21(__args__.context_path, __args__.output_fname)
+    mine_fds(__args__.context_path, __args__.output_fname, __args__.output_fname_rules)
