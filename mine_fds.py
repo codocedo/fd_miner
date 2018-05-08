@@ -26,6 +26,35 @@ from fca.io.sorters import PartitionSorter
 from fca.io.input_models import PatternStructureModel
 import json
 
+class StrippedPartitions(TrimmedPartitionPattern):
+    '''
+    Same as stripped partitions buy with a much more clever intersection.
+    Algorithm defined in
+    [1] Huhtala - TANE: An Efficient Algoritm for Functional and Approximate Dependencies
+    '''    
+    @classmethod
+    def intersection(cls, desc1, desc2):
+        '''
+        Procedure STRIPPED_PRODUCT defined in [1]
+        '''
+        new_desc = []
+        T = {}
+        S = {}
+        for i, k in enumerate(desc1):
+            for t in k:
+                T[t] = i
+            S[i] = set([])
+        for i, k in enumerate(desc2):
+            for t in k:
+                if T.get(t, None) is not None:
+                    S[T[t]].add(t)
+            for t in k:
+                if T.get(t, None) is not None:
+                    if len(S[T[t]]) > 1:
+                        new_desc.append(S[T[t]])
+                    S[T[t]] = set([])
+        return new_desc
+
 def mine_fds(filepath, output_fname=None, rule_fname=None):
     """
     Based on Example 21: Duquenne Guigues Base using TrimmedPartitions with PreviousClosure OnDisk - Streaming patterns to disk
@@ -36,7 +65,7 @@ def mine_fds(filepath, output_fname=None, rule_fname=None):
     
 
     transposed = True
-    TrimmedPartitionPattern.reset()
+    StrippedPartitions.reset()
 
     fctx = PatternStructureModel(
         filepath=filepath,
@@ -50,7 +79,7 @@ def mine_fds(filepath, output_fname=None, rule_fname=None):
     canonical_base = PSCanonicalBase(
         # PSPreviousClosure(
         fctx,
-        pattern=TrimmedPartitionPattern,
+        pattern=StrippedPartitions,
         lazy=False,
         silent=False,
         ondisk=True,
