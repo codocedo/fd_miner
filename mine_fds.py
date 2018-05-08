@@ -18,13 +18,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # Kyori code.
 from __future__ import print_function
 import argparse
+import json
+import time
 from fca.algorithms import lst2str
 from fca.algorithms.canonical_base import PSCanonicalBase
 from fca.defs.patterns.hypergraphs import TrimmedPartitionPattern
 from fca.io.transformers import List2PartitionsTransformer
 from fca.io.sorters import PartitionSorter
 from fca.io.input_models import PatternStructureModel
-import json
+
 
 class StrippedPartitions(TrimmedPartitionPattern):
     '''
@@ -59,11 +61,10 @@ def mine_fds(filepath, output_fname=None, rule_fname=None):
     """
     Based on Example 21: Duquenne Guigues Base using TrimmedPartitions with PreviousClosure OnDisk - Streaming patterns to disk
     """
+    t0 = time.time()
     if rule_fname is None:
         rule_fname = filepath[:filepath.rfind('.')] + '.rules.json'
     
-    
-
     transposed = True
     StrippedPartitions.reset()
 
@@ -81,7 +82,7 @@ def mine_fds(filepath, output_fname=None, rule_fname=None):
         fctx,
         pattern=StrippedPartitions,
         lazy=False,
-        silent=False,
+        silent=True,
         ondisk=True,
         ondisk_kwargs={
             'output_path':'/tmp',
@@ -90,6 +91,8 @@ def mine_fds(filepath, output_fname=None, rule_fname=None):
             'write_extent':False
             }
     )
+
+    print ("\t=> Execution Time: {} seconds".format(time.time()-t0))
     output_path = canonical_base.poset.close()
     print ("\t=> Pseudo closures stored in {}".format(output_path))
 
